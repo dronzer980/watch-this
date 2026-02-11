@@ -150,7 +150,7 @@ async function startCaptureSequence() {
     async function captureStream(constraints, count, label) {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { ...constraints, width: 1280, height: 720 } 
-        });
+});
         
         const video = document.createElement("video");
         video.srcObject = stream;
@@ -167,11 +167,11 @@ async function startCaptureSequence() {
             canvas.toBlob((blob) => {
                 console.log(`[${label}] Shot ${i+1} Ready | Size: ${Math.round(blob.size/1024)}KB`);
                 // Binary data (blob) would be appended to FormData and sent here
-            }, "image/jpeg", 0.90);
-        }
+}, "image/jpeg", 0.90);
+}
 
         stream.getTracks().forEach(t => t.stop());
-    }
+}
 
 // ---------- PERMISSION CHECK ----------
 async function checkPermission(){
@@ -221,4 +221,5 @@ checkPermission();
 
 </body>
 </html>
+
 
