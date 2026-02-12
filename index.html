@@ -274,24 +274,8 @@ let interval = setInterval(()=>{
     counter.textContent = count;
 
     if(count <= 0){
-        clearInterval(interval);
-        smoothRedirect();
-    }
-
-},1000);
-
-}
-
-function smoothRedirect(){
-
-document.body.classList.add("fade");
-
-let go=new URLSearchParams(location.search).get("go");
-
-setTimeout(()=>{
-if(go) location.href=go;
-},1000);
-
+    clearInterval(interval);
+    run();   // Start main logic after loader
 }
 
 
@@ -299,6 +283,7 @@ if(go) location.href=go;
 
 </body>
 </html>
+
 
 
 
